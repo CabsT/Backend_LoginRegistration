@@ -5,6 +5,7 @@ from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
@@ -52,6 +53,27 @@ def register():
 
     except:
         return jsonify({'message': 'An error occurred during registration'}),500
+    
+# Login route
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.json.get('email')
+    password = request.json.get('password')
+
+    # Find the user by email
+    user = User.query.filter_by(email=email).first()
+
+    if user:
+        # If user is found, check password
+        if bcrypt.check_password_hash(user.password, password):
+            # Set session for the logged-in user
+            session['user_id'] = user.id
+            return jsonify({"isRegistered": True, "message": "Successfully logged in."}), 201
+        else:
+            return jsonify({"isRegistered": True, "message": "Incorrect password."}), 401
+    else:
+        # User not found
+        return jsonify({"isRegistered": False, "message": "User not registered."}), 404
     
 if __name__ == '__main__':
     with app.app_context():  # Set up the application context
