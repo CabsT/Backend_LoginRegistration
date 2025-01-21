@@ -33,6 +33,12 @@ def register():
         email = request.json.get('email')
         password = request.json.get('password')
 
+        # Check for duplicates
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'Email is already registered.'}), 400
+        if User.query.filter_by(phone=phone).first():
+            return jsonify({'error': 'Phone number is already registered.'}), 400
+
         # Hash the password
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
@@ -45,11 +51,6 @@ def register():
             password=hashed_password
         )
 
-         # Check for duplicates
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email is already registered.'}), 400
-        if User.query.filter_by(phone=phone).first():
-            return jsonify({'error': 'Phone number is already registered.'}), 400
 
         # Save the user to the database
         db.session.add(new_user)
@@ -58,6 +59,7 @@ def register():
         return jsonify({'message': 'Registered successfully'}), 200
 
     except Exception as e:
+        print(f"Error: {e}")
         return jsonify({'error': 'Registration failed. Please try again'}),500
     
 
@@ -78,13 +80,16 @@ def login():
                 # Password matches
                 session['user_id'] = user.id
                 return jsonify({'message': 'Successfully logged in.'}), 201
-            elif not bcrypt.check_password_hash(user.password, password):
+            else:
                 # Password doesn't match
                 return jsonify({"message": "Incorrect password."}), 401
-     
+        else:
+            # User not found
+            return jsonify({'error': 'User not registered.'}), 404
     except Exception as e:
         # User not found
-        return jsonify({'error': 'User not registered.'}), 404
+        print(f"Error: {e}")
+        return jsonify({'error': 'Error with Login'}), 404
        
 if __name__ == '__main__':
     with app.app_context():  # Set up the application context
