@@ -45,14 +45,22 @@ def register():
             password=hashed_password
         )
 
+         # Check for duplicates
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'Email is already registered.'}), 400
+        if User.query.filter_by(phone=phone).first():
+            return jsonify({'error': 'Phone number is already registered.'}), 400
+
         # Save the user to the database
         db.session.add(new_user)
         db.session.commit()
 
-        return '', 200
+        return jsonify({'message': 'Registered successfully'}), 200
 
-    except:
-        return jsonify({'message': 'An error occurred during registration'}),500
+    except Exception as e:
+        return jsonify({'error': 'Registration failed. Please try again'}),500
+    
+
     
 # Login route
 @app.route('/login', methods=['POST'])
@@ -60,21 +68,24 @@ def login():
     email = request.json.get('email')
     password = request.json.get('password')
 
-    # Find the user by email
-    user = User.query.filter_by(email=email).first()
-
-    if user:
-        # If user is found, check password
-        if bcrypt.check_password_hash(user.password, password):
-            # Set session for the logged-in user
-            session['user_id'] = user.id
-            return jsonify({"isRegistered": True, "message": "Successfully logged in."}), 201
-        else:
-            return jsonify({"isRegistered": True, "message": "Incorrect password."}), 401
-    else:
-        # User not found
-        return jsonify({"isRegistered": False, "message": "User not registered."}), 404
     
+    try:
+        # Find the user by email
+        user = User.query.filter_by(email=email).first()
+        if user:
+            # If user is found, check if the password matches
+            if bcrypt.check_password_hash(user.password, password):
+                # Password matches
+                session['user_id'] = user.id
+                return jsonify({'message': 'Successfully logged in.'}), 201
+            elif not bcrypt.check_password_hash(user.password, password):
+                # Password doesn't match
+                return jsonify({"message": "Incorrect password."}), 401
+     
+    except Exception as e:
+        # User not found
+        return jsonify({'error': 'User not registered.'}), 404
+       
 if __name__ == '__main__':
     with app.app_context():  # Set up the application context
         db.create_all()  # Create tables if they don't exist
